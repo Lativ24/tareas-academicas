@@ -14,7 +14,12 @@ export async function GET() {
     if (!response.ok) {
       return Response.json({ error: "No se pudo actualizar la hoja." }, { status: 502 });
     }
-    const tasks = await response.json();
+    const payload = await response.json();
+    const tasks = Array.isArray(payload) ? payload : payload?.tasks;
+    if (!Array.isArray(tasks)) {
+      return Response.json({ error: "La hoja devolvió un formato inesperado." }, { status: 502 });
+    }
+
     return Response.json({ tasks }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return Response.json({ error: "El servicio de tareas no está disponible." }, { status: 502 });
