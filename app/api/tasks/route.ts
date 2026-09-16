@@ -14,8 +14,12 @@ export async function GET() {
     if (!response.ok) {
       return Response.json({ error: "No se pudo actualizar la hoja." }, { status: 502 });
     }
-    const payload = await response.json();
-    const tasks = Array.isArray(payload) ? payload : payload?.tasks;
+    const payload: unknown = await response.json();
+    const tasks = Array.isArray(payload)
+      ? payload
+      : payload && typeof payload === "object" && "tasks" in payload
+        ? (payload as { tasks?: unknown }).tasks
+        : undefined;
     if (!Array.isArray(tasks)) {
       return Response.json({ error: "La hoja devolvió un formato inesperado." }, { status: 502 });
     }

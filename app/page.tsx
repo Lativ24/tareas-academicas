@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Task = {
-  ID: string; Usuario: string; Materia: string; Tarea: string; Tipo: string;
+  ID: string; Usuario?: string; Materia: string; Tarea: string; Tipo: string;
   Fecha: string; Hora: string; Prioridad: "Alta" | "Media" | "Baja";
   Estado: "Pendiente" | "Completada"; FechaRegistro: string;
   RecordatorioEnviado: "Si" | "No";
@@ -59,8 +59,12 @@ export default function Home() {
     try {
       const response = await fetch(ENDPOINT, { cache: "no-store" });
       if (!response.ok) throw new Error("No disponible");
-      const payload = await response.json();
-      const rows = Array.isArray(payload) ? payload : payload.tasks;
+      const payload: unknown = await response.json();
+      const rows = Array.isArray(payload)
+        ? payload
+        : payload && typeof payload === "object" && "tasks" in payload
+          ? (payload as { tasks?: unknown }).tasks
+          : undefined;
       if (!Array.isArray(rows)) throw new Error("Formato inesperado");
       setTasks(rows); setConnected(true); setUpdatedAt(new Date());
     } catch { setConnected(false); } finally { setSyncing(false); }
