@@ -71,11 +71,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    refresh(); const timer = window.setInterval(refresh, 30_000);
-    return () => window.clearInterval(timer);
-  }, [refresh]);
-
-  useEffect(() => {
     const context = document.modelContext;
     if (!context?.registerTool) return;
     const lifecycle = new AbortController();
@@ -123,7 +118,7 @@ export default function Home() {
           <div className="flex items-center gap-3"><span className="brand-mark" aria-hidden="true"><BookOpen size={19} strokeWidth={2.25} /></span><div><p className="text-[15px] font-semibold tracking-[-0.02em]">Tareas</p><p className="hidden text-xs text-[#6e6e73] sm:block">Asistente académico</p></div></div>
           <div className="flex items-center gap-2.5">
             <div className="hidden items-center gap-2 rounded-full bg-black/[0.045] px-3 py-2 text-xs text-[#6e6e73] sm:flex"><span className={`status-dot ${connected ? "is-live" : ""}`} />{connected ? "Google Sheets conectado" : "Vista guardada"}</div>
-            <Button variant="outline" size="icon" onClick={refresh} disabled={syncing} aria-label="Actualizar tareas" className="h-10 w-10 rounded-full border-black/10 bg-white shadow-none hover:bg-black/[0.04]"><RefreshCw size={17} className={syncing ? "animate-spin" : ""} /></Button>
+            <Button variant="outline" size="icon" onClick={refresh} disabled={syncing} aria-label="Actualizar tareas" title="Sincronizar con Google Sheets" className="h-10 w-10 rounded-full border-black/10 bg-white shadow-none hover:bg-black/[0.04]"><RefreshCw size={17} className={syncing ? "animate-spin" : ""} /></Button>
             <div className="avatar" aria-label="Cuenta de estudiante">AV</div>
           </div>
         </div>
@@ -132,7 +127,7 @@ export default function Home() {
       <div className="mx-auto max-w-[1440px] px-5 pt-8 sm:px-8 lg:px-12 lg:pt-11">
         <section className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div><p className="eyebrow">Martes, 15 de septiembre</p><h1 className="mt-1 text-[clamp(2rem,5vw,3.8rem)] font-semibold leading-[1.02] tracking-[-0.055em]">Tus entregas, en orden.</h1></div>
-          <div className="flex items-center gap-2 text-sm text-[#6e6e73]"><Clock3 size={15} />Actualizado {updatedAt ? updatedAt.toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" }) : "ahora"}</div>
+          <div className="flex items-center gap-2 text-sm text-[#6e6e73]"><Clock3 size={15} />{updatedAt ? `Actualizado ${updatedAt.toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" })}` : "Sin sincronizar en esta sesión"}</div>
         </section>
 
         <section className="summary-grid" aria-label="Resumen de tareas">
@@ -147,7 +142,7 @@ export default function Home() {
 
         <section className="mt-8 overflow-hidden rounded-[28px] border border-black/[0.07] bg-white shadow-[0_18px_60px_rgba(0,0,0,0.055)]">
           <div className="flex flex-col gap-4 border-b border-black/[0.06] p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-            <div><div className="flex items-center gap-2"><h2 className="text-xl font-semibold tracking-[-0.035em]">Todas las tareas</h2><span className="count-badge">{filtered.length}</span></div><p className="mt-1 text-sm text-[#86868b]">Se actualiza automáticamente cada 30 segundos.</p></div>
+            <div><div className="flex items-center gap-2"><h2 className="text-xl font-semibold tracking-[-0.035em]">Todas las tareas</h2><span className="count-badge">{filtered.length}</span></div><p className="mt-1 text-sm text-[#86868b]">Solo se consulta Google Sheets cuando presionas el botón de actualizar.</p></div>
             <div className="flex flex-col gap-2.5 sm:flex-row">
               <label className="search-control"><Search size={16} aria-hidden="true" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar tarea o materia" aria-label="Buscar tarea o materia" className="h-auto border-0 bg-transparent p-0 text-[15px] shadow-none focus-visible:ring-0" /></label>
               <label className="select-control"><SlidersHorizontal size={15} aria-hidden="true" /><select value={subject} onChange={(event) => setSubject(event.target.value)} aria-label="Filtrar por materia">{subjects.map((value) => <option key={value} value={value}>{value}</option>)}</select><ChevronDown size={14} aria-hidden="true" /></label>
