@@ -24,7 +24,10 @@ const FALLBACK_TASKS: Task[] = [
 
 const formatter = new Intl.DateTimeFormat("es-CR", { day: "numeric", month: "short" });
 function daysUntil(date: string) {
-  const due = new Date(`${date}T00:00:00`); const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Costa_Rica", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+  const due = new Date(`${date}T00:00:00`); const today = new Date(`${todayKey}T00:00:00`);
   return Math.round((due.getTime() - today.getTime()) / 86_400_000);
 }
 function dueLabel(task: Task) {
