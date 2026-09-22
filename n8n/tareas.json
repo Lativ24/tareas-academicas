@@ -1,0 +1,145 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "path": "asistente-academico-tareas",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "350d6014-b168-4194-a7ec-c0d5f4429aaf",
+      "name": "Webhook del panel",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "df5c63f1-7d27-47c8-a7fb-5aed6c1a2fae"
+    },
+    {
+      "parameters": {
+        "jsCode": "const expected = \"f4f8f5538b0e817f45881d200e5594b54f94481921762ef36dccdc36b64e2934\";\nconst received = $json.headers?.['x-panel-key'];\nif (!received || received !== expected) {\n  throw new Error('Acceso no autorizado');\n}\nreturn $input.all();"
+      },
+      "id": "1af20d52-facc-47fb-a9dd-d1623d58d5ee",
+      "name": "Validar clave privada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA",
+          "mode": "list",
+          "cachedResultName": "AsistenteAcademico-Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "d49f4a17-e1d3-4726-93d2-16e259b1a771",
+      "name": "Leer tareas",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7vlGL7B30Kpa4i1t",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "7e063dfa-d5b7-46fd-8f34-318e97538d6f",
+      "name": "Responder al panel",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const clean = $input.all().map(({ json }) => ({\n  ID: String(json.ID ?? ''),\n  Materia: String(json.Materia ?? ''),\n  Tarea: String(json.Tarea ?? ''),\n  Tipo: String(json.Tipo ?? ''),\n  Fecha: String(json.Fecha ?? ''),\n  Hora: String(json.Hora ?? ''),\n  Prioridad: String(json.Prioridad ?? ''),\n  Estado: String(json.Estado ?? ''),\n  FechaRegistro: String(json.FechaRegistro ?? ''),\n  RecordatorioEnviado: String(json.RecordatorioEnviado ?? '')\n}));\nreturn [{ json: { tasks: clean } }];"
+      },
+      "id": "baa11f68-21d1-4cb1-a4ae-5c626118b4db",
+      "name": "Sanitizar tareas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook del panel": {
+      "main": [
+        [
+          {
+            "node": "Validar clave privada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar clave privada": {
+      "main": [
+        [
+          {
+            "node": "Leer tareas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer tareas": {
+      "main": [
+        [
+          {
+            "node": "Sanitizar tareas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitizar tareas": {
+      "main": [
+        [
+          {
+            "node": "Responder al panel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "54d47fd90a65e58bd6027bbf1c0ff7331e9ebc54105efcf0919ae77bc62104a0"
+  }
+}

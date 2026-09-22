@@ -1,0 +1,1132 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "8d68d042-8877-4e0d-90cb-eccd5e8fedfb",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -1552,
+        416
+      ],
+      "webhookId": "cc2ea756-ac6d-4a3e-a0b9-c900073544e5",
+      "credentials": {
+        "telegramApi": {
+          "id": "nvNxPyboOCBQsDA1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Eres el motor de interpretacion de un asistente academico. Tu unica funcion es convertir un mensaje escrito en lenguaje natural por un estudiante en un objeto JSON estructurado. No conversas, no saludas, no explicas.  CONTEXTO TEMPORAL (usalo para resolver toda fecha relativa): - Fecha y hora actual: {{ $now.format('yyyy-MM-dd HH:mm') }} - Dia de la semana actual: {{ $now.setLocale('es').toFormat('cccc') }} - Zona horaria: {{ $now.zoneName }}  SALIDA Responde EXCLUSIVAMENTE con un objeto JSON valido. Sin texto antes ni despues. Sin bloques de codigo. Sin markdown. Sin comentarios.  ESQUEMA {   \"accion\": \"CREAR_TAREA\" | \"CONSULTAR_TAREAS\" | \"COMPLETAR_TAREA\" | \"AYUDA\" | \"DESCONOCIDO\",   \"confianza\": 0.0 a 1.0,   \"datos\": { ... segun la accion ... },   \"faltantes\": [ lista de campos obligatorios que no se pudieron extraer ],   \"mensaje_usuario\": \"texto corto en espanol para mostrar si falta informacion, si no aplica usar null\" }  REGLAS POR ACCION  1) CREAR_TAREA    El usuario anuncia una obligacion academica futura.    \"datos\" debe contener:      materia    : string  - nombre de la materia. Si no se menciona, \"Sin materia\".      tarea      : string  - descripcion breve y clara de lo que hay que hacer.      tipo       : \"Tarea\" | \"Examen\" | \"Proyecto\" | \"Exposicion\" | \"Lectura\" | \"Quiz\" | \"Otro\"      fecha      : string  - fecha limite en formato YYYY-MM-DD. null si no se deduce.      hora       : string  - hora limite en formato HH:mm (24h). null si no se menciona.      prioridad  : \"Alta\" | \"Media\" | \"Baja\"    Campo obligatorio: \"fecha\". Si \"fecha\" es null, agregala a \"faltantes\".     Resolucion de fechas relativas (respecto al CONTEXTO TEMPORAL):      - \"hoy\"            -> la fecha actual      - \"manana\"         -> fecha actual + 1 dia      - \"pasado manana\"  -> fecha actual + 2 dias      - \"el viernes\"     -> el proximo viernes en el futuro; si hoy ES viernes, hoy      - \"el proximo viernes\" -> el viernes de la semana siguiente      - \"en 3 dias\"      -> fecha actual + 3 dias      - \"la otra semana\" -> fecha actual + 7 dias      - \"fin de mes\"     -> ultimo dia del mes actual    La fecha resultante NUNCA puede ser anterior a la fecha actual.     Reglas de hora:      - \"11:59 p. m.\" / \"11:59 pm\" / \"medianoche\" -> \"23:59\"      - \"en la manana\" -> \"08:00\"   \"al mediodia\" -> \"12:00\"   \"en la tarde\" -> \"17:00\"      - Si no hay ninguna referencia horaria -> null     Reglas de prioridad (aplicar en orden):      - \"Alta\"  si el tipo es Examen o Proyecto, o si faltan 2 dias o menos,                o si el usuario dice \"urgente\", \"importante\", \"vale mucho\".      - \"Baja\"  si el tipo es Lectura, o si faltan mas de 10 dias.      - \"Media\" en cualquier otro caso.  2) CONSULTAR_TAREAS    El usuario pregunta que tiene pendiente.    \"datos\" debe contener:      filtro_materia : string o null   - si pide una materia especifica      filtro_desde   : \"YYYY-MM-DD\" o null      filtro_hasta   : \"YYYY-MM-DD\" o null      solo_pendientes: true | false    - por defecto true    \"esta semana\" -> desde hoy hasta el proximo domingo.    \"hoy\" -> desde hoy hasta hoy.  \"manana\" -> desde manana hasta manana.    Sin referencia temporal -> ambos filtros en null.  3) COMPLETAR_TAREA    El usuario dice que ya termino algo.    \"datos\" debe contener:      id           : string o null  - si menciona un identificador explicito (ej \"001\", \"T-004\")      materia      : string o null      texto_tarea  : string o null  - descripcion mencionada, para buscar por similitud    Debe existir al menos uno de los tres. Si los tres son null, agrega \"identificador\"    a \"faltantes\".  4) AYUDA    El usuario pregunta que puede hacer el bot, o escribe /start o /help.    \"datos\" debe ser un objeto vacio {}.  5) DESCONOCIDO    El mensaje no tiene relacion con gestion de tareas academicas.    \"datos\" debe ser un objeto vacio {}.    \"mensaje_usuario\" debe explicar brevemente que el bot solo gestiona tareas.  REGLAS GENERALES - Nunca inventes una fecha que el usuario no dio ni implico. Prefiere null. - Nunca inventes una materia. Si no la dice, usa \"Sin materia\". - Normaliza el nombre de la materia a Capitalizacion De Titulo   (\"bases de datos\" -> \"Bases de Datos\"). - Corrige abreviaturas comunes (\"bd\" -> \"Bases de Datos\", \"progra\" -> \"Programacion\",   \"mate\" -> \"Matematica\") solo cuando el contexto sea inequivoco. - \"confianza\" baja (< 0.6) si el mensaje es ambiguo o incompleto. - El campo \"faltantes\" es un array; si no falta nada, debe ser []."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "d8f8a928-76f2-4955-ad25-893820d29577",
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1328,
+        416
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "34d8a607-76ff-457a-93b4-b1de017b2780",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -1392,
+        624
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "kan0U6BXfEBFqcA4",
+          "name": "Gemini - Asistente"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=No pude procesar tu mensaje: el servicio de inteligencia artificial no esta disponible en este momento.\n\nVolve a intentarlo en un minuto. Si el problema sigue, es una saturacion temporal de los servidores de Google y se resuelve solo.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "d6ba49e9-a4e1-40a9-bf05-e277b525c297",
+      "name": "Avisar fallo IA",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1104,
+        656
+      ],
+      "webhookId": "0bd2ab7e-ee90-4c86-8600-426c128e7407",
+      "credentials": {
+        "telegramApi": {
+          "id": "nvNxPyboOCBQsDA1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Nodo Code (modo: \"Run Once for All Items\")\n * Ubicacion: justo despues del nodo de Gemini, antes del Switch.\n *\n * Problema que resuelve: Gemini suele envolver el JSON en fences de markdown\n * (```json ... ```), agregar texto introductorio, o usar comillas tipograficas.\n * Este nodo normaliza y valida la salida antes de que el resto del flujo la use.\n *\n * Salida: un item con { ok, accion, confianza, datos, faltantes, mensaje_usuario }\n *         o { ok:false, error } si no se pudo parsear.\n */\n\nconst ACCIONES_VALIDAS = [\n  'CREAR_TAREA',\n  'CONSULTAR_TAREAS',\n  'COMPLETAR_TAREA',\n  'AYUDA',\n  'DESCONOCIDO',\n];\n\n/** Extrae el primer objeto JSON balanceado que aparezca en el texto. */\nfunction extraerObjetoJson(texto) {\n  const inicio = texto.indexOf('{');\n  if (inicio === -1) return null;\n\n  let profundidad = 0;\n  let dentroDeCadena = false;\n  let escapado = false;\n\n  for (let i = inicio; i < texto.length; i++) {\n    const c = texto[i];\n\n    if (escapado) { escapado = false; continue; }\n    if (c === '\\\\') { escapado = true; continue; }\n    if (c === '\"') { dentroDeCadena = !dentroDeCadena; continue; }\n    if (dentroDeCadena) continue;\n\n    if (c === '{') profundidad++;\n    else if (c === '}') {\n      profundidad--;\n      if (profundidad === 0) return texto.slice(inicio, i + 1);\n    }\n  }\n  return null;\n}\n\nfunction limpiar(texto) {\n  return String(texto)\n    .replace(/```(?:json)?/gi, '')\n    .replace(/[“”]/g, '\"')   // comillas tipograficas dobles\n    .replace(/[‘’]/g, \"'\")   // comillas tipograficas simples\n    .replace(/,\\s*([}\\]])/g, '$1')     // comas colgantes\n    .trim();\n}\n\nconst entrada = $input.first().json;\n\n// El campo con el texto varia segun el nodo usado; se prueban los mas comunes.\nconst bruto =\n  entrada.text ??\n  entrada.output ??\n  entrada.content ??\n  entrada.response ??\n  entrada.message?.content ??\n  entrada.candidates?.[0]?.content?.parts?.[0]?.text ??\n  JSON.stringify(entrada);\n\nlet parsed = null;\nlet error = null;\n\ntry {\n  const candidato = extraerObjetoJson(limpiar(bruto));\n  if (!candidato) throw new Error('No se encontro un objeto JSON en la respuesta.');\n  parsed = JSON.parse(candidato);\n} catch (e) {\n  error = e.message;\n}\n\nif (!parsed) {\n  return [{\n    json: {\n      ok: false,\n      accion: 'DESCONOCIDO',\n      error: `Respuesta no parseable de Gemini: ${error}`,\n      bruto: String(bruto).slice(0, 500),\n      mensaje_usuario: 'No logre entender el mensaje. Intenta escribirlo de otra forma.',\n    },\n  }];\n}\n\n// Normalizacion defensiva: el resto del flujo asume estos campos siempre presentes.\nconst accion = ACCIONES_VALIDAS.includes(parsed.accion) ? parsed.accion : 'DESCONOCIDO';\n\nreturn [{\n  json: {\n    ok: true,\n    accion,\n    confianza: typeof parsed.confianza === 'number' ? parsed.confianza : 0,\n    datos: parsed.datos && typeof parsed.datos === 'object' ? parsed.datos : {},\n    faltantes: Array.isArray(parsed.faltantes) ? parsed.faltantes : [],\n    mensaje_usuario: parsed.mensaje_usuario ?? null,\n  },\n}];\n"
+      },
+      "id": "904238f9-144c-4721-a338-fe83e63d71f7",
+      "name": "Sanitizar JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -992,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "CREAR_TAREA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1b0ff0f9-305c-4a1c-b320-5832592bbcac"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Crear"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e940e32a-de6e-403f-8f2a-7ad414efe472",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "CONSULTAR_TAREAS",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Consultar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b1f7bb2b-f52e-483d-8813-674e26ad354e",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "COMPLETAR_TAREA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Completar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e0b64b6d-3f70-4470-985c-79b139fb78b0",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "AYUDA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ayuda"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c6d06f44-cd93-48a7-88c6-08517ff1ff17",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "DESCONOCIDO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Desconocido"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "a4716c4a-4427-4fd1-8f41-f202869f37b4",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -768,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e7a20128-a8e0-45b3-9f7e-c0d4b49121e4",
+              "leftValue": "={{ $json.datos.fecha }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f7e8333d-f810-46ff-97b7-89e815869c14",
+      "name": "Validar fecha",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -544,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Nodo Code (modo: \"Run Once for All Items\")\n * Ubicacion: rama CREAR_TAREA, despues de validar que la fecha exista,\n *            justo antes del nodo Google Sheets \"Append Row\".\n *\n * Construye la fila exacta que espera la hoja de calculo y genera el ID.\n * El ID usa el epoch en base36 -> corto, unico y ordenable cronologicamente.\n */\n\nconst interpretacion = $input.first().json;\nconst d = interpretacion.datos ?? {};\n\n// Datos del mensaje original de Telegram (ajustar el nombre del nodo si difiere).\nconst telegram = $('Telegram Trigger').first().json;\nconst usuarioId = telegram.message?.chat?.id ?? telegram.message?.from?.id ?? 'desconocido';\n\nconst ahora = $now;\n\n/** T-<base36 del epoch>  ->  ej. \"T-K3M9QZ\" */\nconst id = 'T-' + ahora.toMillis().toString(36).toUpperCase().slice(-6);\n\nconst fila = {\n  ID: id,\n  Usuario: String(usuarioId),\n  Materia: d.materia || 'Sin materia',\n  Tarea: d.tarea || 'Sin descripcion',\n  Tipo: d.tipo || 'Otro',\n  Fecha: d.fecha,                       // YYYY-MM-DD, ya validado aguas arriba\n  Hora: d.hora || '23:59',              // default: fin del dia\n  Prioridad: d.prioridad || 'Media',\n  Estado: 'Pendiente',\n  FechaRegistro: ahora.toFormat('yyyy-MM-dd HH:mm'),\n  RecordatorioEnviado: 'No',\n};\n\nreturn [{ json: fila }];"
+      },
+      "id": "d11957b7-6f29-4a4f-a4ab-ca5c0870d64a",
+      "name": "Preparar fila",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA",
+          "mode": "list",
+          "cachedResultName": "AsistenteAcademico-Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Usuario",
+              "displayName": "Usuario",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Materia",
+              "displayName": "Materia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tarea",
+              "displayName": "Tarea",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tipo",
+              "displayName": "Tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Hora",
+              "displayName": "Hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Prioridad",
+              "displayName": "Prioridad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "FechaRegistro",
+              "displayName": "FechaRegistro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "RecordatorioEnviado",
+              "displayName": "RecordatorioEnviado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7e23971d-be8b-4511-acc2-9c5a190f7325",
+      "name": "Guardar tarea",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -96,
+        432
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7vlGL7B30Kpa4i1t",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=✅ <b>Tarea registrada</b>\n\n📚 Materia: {{ $('Preparar fila').item.json.Materia.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }}\n📝 Tarea: {{ $('Preparar fila').item.json.Tarea.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }}\n🏷 Tipo: {{ $('Preparar fila').item.json.Tipo }}\n📅 Fecha: {{ $('Preparar fila').item.json.Fecha }}\n⏰ Hora: {{ $('Preparar fila').item.json.Hora }}\n🎯 Prioridad: {{ $('Preparar fila').item.json.Prioridad }}\n\nID: <code>{{ $('Preparar fila').item.json.ID }}</code>",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "8fb9bc34-cad1-499e-965f-9a8ba6dda9ea",
+      "name": "Confirmar registro",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        432
+      ],
+      "webhookId": "aea39047-e382-4208-9879-67d72f730fb9",
+      "credentials": {
+        "telegramApi": {
+          "id": "nvNxPyboOCBQsDA1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "= <b>Falta la fecha de entrega</b>\n\nEntendí que querés registrar: {{ ($json.datos.tarea ?? 'una tarea').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }}\n\nPero no me dijiste cuándo hay que entregarlo. Escribilo de nuevo incluyendo la fecha, por ejemplo:\n<i>tengo que entregar un proyecto el viernes</i>",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "09f7d118-4e57-40d8-ac8c-b7136b1b1aaa",
+      "name": "Pedir fecha",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -272,
+        576
+      ],
+      "webhookId": "f9c9f29b-260a-4fd0-aa3e-3cb849d5a97e",
+      "credentials": {
+        "telegramApi": {
+          "id": "nvNxPyboOCBQsDA1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA",
+          "mode": "list",
+          "cachedResultName": "AsistenteAcademico-Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "2cd3cb67-5592-4ca4-8c14-d236f5f2f503",
+      "name": "Leer tareas",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -624,
+        272
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7vlGL7B30Kpa4i1t",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Nodo Code (modo: \"Run Once for All Items\")\n * Ubicacion: rama CONSULTAR_TAREAS, despues de leer Google Sheets.\n *\n * Aplica los filtros que devolvio Gemini y arma el mensaje de respuesta.\n * Filtra siempre por Usuario: cada estudiante solo ve sus propias tareas.\n *\n * El mensaje se arma con etiquetas HTML porque todos los nodos Telegram del\n * proyecto usan Parse Mode = HTML. Ver docs/03-diseno-workflows.md.\n */\n\nconst interpretacion = $('Sanitizar JSON').first().json;\nconst f = interpretacion.datos ?? {};\n\nconst telegram = $('Telegram Trigger').first().json;\nconst usuarioId = String(telegram.message?.chat?.id ?? '');\n\n/** Escapa los tres caracteres que Telegram interpreta en modo HTML. */\nconst esc = (v) => String(v ?? '')\n  .replaceAll('&', '&amp;')\n  .replaceAll('<', '&lt;')\n  .replaceAll('>', '&gt;');\n\n/** Minusculas y sin acentos, para comparar lo que escribe el usuario */\nconst normalizar = (v) => String(v ?? '')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[̀-ͯ]/g, '')\n  .trim();\n\nconst orden = { Alta: 0, Media: 1, Baja: 2 };\n\nlet tareas = $input.all()\n  .map(i => i.json)\n  .filter(t => String(t.Usuario) === usuarioId);\n\nif (f.solo_pendientes !== false) {\n  tareas = tareas.filter(t => normalizar(t.Estado) === 'pendiente');\n}\nif (f.filtro_materia) {\n  const m = normalizar(f.filtro_materia);\n  tareas = tareas.filter(t => normalizar(t.Materia).includes(m));\n}\nif (f.filtro_desde) tareas = tareas.filter(t => t.Fecha >= f.filtro_desde);\nif (f.filtro_hasta) tareas = tareas.filter(t => t.Fecha <= f.filtro_hasta);\n\n// Orden: primero lo que vence antes; a igual fecha, primero lo mas prioritario.\ntareas.sort((a, b) =>\n  (a.Fecha ?? '').localeCompare(b.Fecha ?? '') ||\n  (orden[a.Prioridad] ?? 9) - (orden[b.Prioridad] ?? 9)\n);\n\nif (tareas.length === 0) {\n  return [{ json: {\n    chatId: usuarioId,\n    cantidad: 0,\n    texto: 'No tienes tareas pendientes con esos criterios.',\n  }}];\n}\n\nconst lineas = tareas.map((t, i) =>\n  `<b>${i + 1}. ${esc(t.Materia)}</b>  [${esc(t.Prioridad)}]\\n` +\n  `   ${esc(t.Tarea)}\\n` +\n  `   Entrega: ${esc(t.Fecha)}${t.Hora ? ' ' + esc(t.Hora) : ''}\\n` +\n  `   ID: <code>${esc(t.ID)}</code>`\n);\n\nreturn [{ json: {\n  chatId: usuarioId,\n  cantidad: tareas.length,\n  texto: `<b>TAREAS PENDIENTES</b> (${tareas.length})\\n\\n${lineas.join('\\n\\n')}`,\n}}];"
+      },
+      "id": "f6ac48c8-39c6-4931-ab74-53765fb759ef",
+      "name": "Formatear consulta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.texto }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "e44acd62-e4d2-499e-9f81-7aff36ef5faa",
+      "name": "Enviar listado",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        272
+      ],
+      "webhookId": "2a1dc9f4-0b77-402d-8969-94e6ec84a795",
+      "credentials": {
+        "telegramApi": {
+          "id": "nvNxPyboOCBQsDA1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA",
+          "mode": "list",
+          "cachedResultName": "AsistenteAcademico-Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "01cad9f0-f325-4c67-8255-eac5bab09095",
+      "name": "Buscar tarea",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -672,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7vlGL7B30Kpa4i1t",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Nodo Code (modo: \"Run Once for All Items\")\n * Ubicacion: rama COMPLETAR_TAREA, despues de leer Google Sheets.\n *\n * Google Sheets no permite actualizar por clave: hay que localizar la fila\n * primero. Este nodo decide cual es, a partir de lo que extrajo Gemini, y\n * deja el resultado listo para un IF de dos salidas.\n *\n * Salida (siempre un unico item):\n *   estado : 'una'            -> se identifico exactamente una tarea pendiente\n *            'no_encontrada'  -> ninguna coincidencia\n *            'ya_completada'  -> la unica coincidencia ya estaba completada\n *            'varias'         -> mas de una coincidencia, hace falta el ID\n *            'sin_criterio'   -> el mensaje no aporta con que buscar\n *   ID     : identificador de la fila a actualizar (solo si estado = 'una')\n *   texto  : mensaje ya formateado para los casos que no son 'una'\n */\n\nconst interpretacion = $('Sanitizar JSON').first().json;\nconst d = interpretacion.datos ?? {};\n\nconst telegram = $('Telegram Trigger').first().json;\nconst usuarioId = String(telegram.message?.chat?.id ?? '');\n\n/** Escapa los tres caracteres que Telegram interpreta en modo HTML. */\nconst esc = (v) => String(v ?? '')\n  .replaceAll('&', '&amp;')\n  .replaceAll('<', '&lt;')\n  .replaceAll('>', '&gt;');\n\n/** Minusculas y sin acentos, para comparar lo que escribe el usuario. */\nconst normalizar = (v) => String(v ?? '')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .trim();\n\nconst salir = (estado, texto, ID = null) => [{\n  json: { estado, texto, ID, chatId: usuarioId },\n}];\n\n// Solo se buscan tareas propias. Nunca se toca una fila de otro usuario.\nconst propias = $input.all()\n  .map(i => i.json)\n  .filter(t => String(t.Usuario) === usuarioId);\n\n// --- 1. Por ID explicito ---------------------------------------------------\n// El usuario puede escribir el ID completo (\"T-UXH49X\") o solo el sufijo.\nif (d.id) {\n  const buscado = normalizar(d.id).replace(/^t-/, '');\n  const porId = propias.filter(t => normalizar(t.ID).replace(/^t-/, '') === buscado);\n\n  if (porId.length === 0) {\n    return salir('no_encontrada',\n      `No encontre ninguna tarea con el identificador <code>${esc(d.id)}</code>.\\n\\n` +\n      `Escribi <i>que tengo pendiente</i> para ver tus tareas con sus ID.`);\n  }\n  if (String(porId[0].Estado).toLowerCase() === 'completada') {\n    return salir('ya_completada',\n      `La tarea <code>${esc(porId[0].ID)}</code> ya estaba marcada como completada.`);\n  }\n  return salir('una', null, porId[0].ID);\n}\n\n// --- 2. Por materia y descripcion ------------------------------------------\nconst materia = normalizar(d.materia);\nconst textoTarea = normalizar(d.texto_tarea);\n\nif (!materia && !textoTarea) {\n  return salir('sin_criterio',\n    'No me quedo claro cual tarea terminaste.\\n\\n' +\n    'Deci la materia, la descripcion o el ID, por ejemplo:\\n' +\n    '<i>ya termine el proyecto de Bases de Datos</i>');\n}\n\n// Palabras de tres letras o menos no discriminan (\"de\", \"el\", \"la\").\nconst palabras = textoTarea.split(/\\s+/).filter(p => p.length > 3);\n\nlet candidatos = propias.filter(t => {\n  if (materia && !normalizar(t.Materia).includes(materia)) return false;\n  if (palabras.length === 0) return true;\n\n  const contenido = normalizar(`${t.Tarea} ${t.Tipo}`);\n  return palabras.some(p => contenido.includes(p));\n});\n\nif (candidatos.length === 0) {\n  return salir('no_encontrada',\n    'No encontre ninguna tarea que coincida con esa descripcion.\\n\\n' +\n    'Escribi <i>que tengo pendiente</i> para ver tus tareas.');\n}\n\n// Entre varias coincidencias, las pendientes tienen prioridad sobre las ya\n// completadas: si el usuario dice \"ya termine X\" se refiere a una pendiente.\nconst pendientes = candidatos.filter(t => String(t.Estado).toLowerCase() === 'pendiente');\n\nif (pendientes.length === 0) {\n  return salir('ya_completada',\n    `Esa tarea ya estaba marcada como completada: <b>${esc(candidatos[0].Materia)}</b> - ${esc(candidatos[0].Tarea)}`);\n}\n\nif (pendientes.length === 1) {\n  return salir('una', null, pendientes[0].ID);\n}\n\n// Ambiguo: se listan las opciones y no se modifica nada.\nconst lineas = pendientes.map((t, i) =>\n  `<b>${i + 1}. ${esc(t.Materia)}</b>\\n` +\n  `   ${esc(t.Tarea)}\\n` +\n  `   ID: <code>${esc(t.ID)}</code>`\n);\n\nreturn salir('varias',\n  `Encontre ${pendientes.length} tareas que coinciden. Deci cual con su ID:\\n\\n` +\n  lineas.join('\\n\\n'));;"
+      },
+      "id": "be951062-b2d4-42be-a2c6-76d7821a6261",
+      "name": "Localizar tarea",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "61c3f2e7-0827-4998-a5e1-f6a3010c47b4",
+              "leftValue": "={{ $json.estado }}",
+              "rightValue": "una",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "05222bec-90f7-4027-b5f6-d0d9323c6700",
+      "name": "Se identifico",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -224,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA",
+          "mode": "list",
+          "cachedResultName": "AsistenteAcademico-Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ $json.ID }}",
+            "Estado": "Completada"
+          },
+          "matchingColumns": [
+            "ID"
+          ],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Usuario",
+              "displayName": "Usuario",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Materia",
+              "displayName": "Materia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Tarea",
+              "displayName": "Tarea",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Tipo",
+              "displayName": "Tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Hora",
+              "displayName": "Hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Prioridad",
+              "displayName": "Prioridad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "FechaRegistro",
+              "displayName": "FechaRegistro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "RecordatorioEnviado",
+              "displayName": "RecordatorioEnviado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3a560af4-3585-4bf4-9c6d-cf45a6995393",
+      "name": "Marcar completada",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7vlGL7B30Kpa4i1t",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Localizar tarea').item.json.chatId }}",
+        "text": "={{ \"Tarea <code>\" + $('Localizar tarea').item.json.ID + \"</code> marcada como completada.\" }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "806d7bc1-1a56-4db0-b9c9-4a1d0f81104d",
+      "name": "Confirmar completada",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        0
+      ],
+      "webhookId": "845fdb6b-e923-4ba8-90ba-5fe7d336162c",
+      "credentials": {
+        "telegramApi": {
+          "id": "nvNxPyboOCBQsDA1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.texto }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "e6374208-9b78-4ed3-9cd8-200be89ec4f6",
+      "name": "Informar problema",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        176
+      ],
+      "webhookId": "f0ef303b-717b-4398-8b36-fb73853ef776",
+      "credentials": {
+        "telegramApi": {
+          "id": "nvNxPyboOCBQsDA1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=🎓 <b>Asistente Académico</b>\n\nEscribime en lenguaje normal, sin comandos.\n\n<b>Registrar una tarea</b>\n<i>Tengo examen de Paradigmas el próximo lunes a las 8am</i>\n<i>Entregar el informe de Redes el viernes</i>\n\n<b>Ver pendientes</b>\n<i>¿Qué tengo pendiente?</i>\n<i>¿Qué tengo esta semana?</i>\n<i>¿Qué tengo de Bases de Datos?</i>\n\n<b>Marcar como terminada</b>\n<i>Ya terminé el proyecto de Bases de Datos</i>\n<i>Ya terminé la tarea T-UX8BCK</i>\n\nTambién te aviso solo cuando una entrega esté cerca.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "c029051e-1994-4fbe-b012-f17091c003f1",
+      "name": "Responder ayuda",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -448,
+        768
+      ],
+      "webhookId": "555e4349-2c16-4de5-8de4-bed6a45bfc07",
+      "credentials": {
+        "telegramApi": {
+          "id": "nvNxPyboOCBQsDA1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ ($json.mensaje_usuario ?? 'No entendí ese mensaje.').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }}\n\nEscribí <i>ayuda</i> para ver qué puedo hacer.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "2c2ed22c-d887-4cc4-8b09-25795102bc11",
+      "name": "Responder desconocido",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        768
+      ],
+      "webhookId": "d2450a56-46d7-4fd0-ac91-488f7323d7e7",
+      "credentials": {
+        "telegramApi": {
+          "id": "nvNxPyboOCBQsDA1",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Sanitizar JSON",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar fallo IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitizar JSON": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Validar fecha",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Leer tareas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar tarea",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder ayuda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder desconocido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder desconocido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar fecha": {
+      "main": [
+        [
+          {
+            "node": "Preparar fila",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pedir fecha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar fila": {
+      "main": [
+        [
+          {
+            "node": "Guardar tarea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar tarea": {
+      "main": [
+        [
+          {
+            "node": "Confirmar registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer tareas": {
+      "main": [
+        [
+          {
+            "node": "Formatear consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear consulta": {
+      "main": [
+        [
+          {
+            "node": "Enviar listado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar tarea": {
+      "main": [
+        [
+          {
+            "node": "Localizar tarea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Localizar tarea": {
+      "main": [
+        [
+          {
+            "node": "Se identifico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Se identifico": {
+      "main": [
+        [
+          {
+            "node": "Marcar completada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Informar problema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar completada": {
+      "main": [
+        [
+          {
+            "node": "Confirmar completada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "54d47fd90a65e58bd6027bbf1c0ff7331e9ebc54105efcf0919ae77bc62104a0"
+  }
+}

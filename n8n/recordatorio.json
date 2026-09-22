@@ -1,0 +1,328 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c07c279c-8bcf-4540-a350-efd3565b26df",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA",
+          "mode": "list",
+          "cachedResultName": "AsistenteAcademico-Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "181526c8-ab21-44b0-b6cf-f79d27855812",
+      "name": "Leer todas las tareas",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7vlGL7B30Kpa4i1t",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const VENTANA_DIAS = 2;\nconst IDS_INVALIDOS = new Set(['', '123456789', 'undefined', 'null']);\nconst filas = $input.all().map((item) => item.json);\nconst hoy = $now.startOf('day');\n\nconst esc = (valor) => String(valor ?? '')\n  .replaceAll('&', '&amp;')\n  .replaceAll('<', '&lt;')\n  .replaceAll('>', '&gt;');\n\nconst porUsuario = new Map();\n\nfor (const fila of filas) {\n  if (String(fila.Estado).toLowerCase() !== 'pendiente' || !fila.Fecha) continue;\n\n  const usuario = String(fila.Usuario ?? '').trim();\n  const chatIdValido = /^-?\\d+$/.test(usuario) && !IDS_INVALIDOS.has(usuario);\n  if (!chatIdValido) continue;\n\n  const fecha = DateTime.fromFormat(String(fila.Fecha).trim(), 'yyyy-MM-dd', {\n    zone: hoy.zoneName,\n  });\n  if (!fecha.isValid) continue;\n\n  const diasRestantes = Math.round(fecha.startOf('day').diff(hoy, 'days').days);\n  if (diasRestantes > VENTANA_DIAS) continue;\n  if (String(fila.RecordatorioEnviado) === 'Si' && diasRestantes > 0) continue;\n\n  let etiqueta;\n  if (diasRestantes < 0) etiqueta = `VENCIDA hace ${Math.abs(diasRestantes)} dia(s)`;\n  else if (diasRestantes === 0) etiqueta = 'VENCE HOY';\n  else if (diasRestantes === 1) etiqueta = 'vence manana';\n  else etiqueta = `faltan ${diasRestantes} dias`;\n\n  if (!porUsuario.has(usuario)) porUsuario.set(usuario, []);\n  porUsuario.get(usuario).push({ ...fila, diasRestantes, etiqueta });\n}\n\nconst salida = [];\nfor (const [usuario, tareas] of porUsuario) {\n  tareas.sort((a, b) => a.diasRestantes - b.diasRestantes);\n  const lineas = tareas.map((tarea) =>\n    `<b>${esc(tarea.Materia)}</b>  [${esc(tarea.Prioridad)}]\\n` +\n    `   ${esc(tarea.Tarea)}\\n` +\n    `   Entrega: ${esc(tarea.Fecha)} ${esc(tarea.Hora)} - <i>${esc(tarea.etiqueta)}</i>\\n` +\n    `   ID: <code>${esc(tarea.ID)}</code>`\n  );\n\n  salida.push({\n    json: {\n      chatId: usuario,\n      cantidad: tareas.length,\n      ids: tareas.map((tarea) => tarea.ID),\n      texto: `<b>RECORDATORIO</b>\\n\\nTienes ${tareas.length} tarea(s) que requieren atencion:\\n\\n${lineas.join('\\n\\n')}`,\n    },\n  });\n}\n\nreturn salida;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "1fe47ada-7471-40a3-8348-eb6f64d47492",
+      "name": "Filtrar vencimientos"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.texto }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "310ef5c3-076f-4cf7-98aa-e11db00282e3",
+      "name": "Enviar recordatorio",
+      "webhookId": "2616fd0c-3524-4c11-ae8c-fcc56052eb3f",
+      "credentials": {
+        "telegramApi": {
+          "id": "nvNxPyboOCBQsDA1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA",
+          "mode": "list",
+          "cachedResultName": "AsistenteAcademico-Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tareas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Joh7Pc-GMialZ-25IwIUwslrb-pMqqsiz9Pm0fVFcRA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ $json.ID }}",
+            "RecordatorioEnviado": "Si"
+          },
+          "matchingColumns": [
+            "ID"
+          ],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Usuario",
+              "displayName": "Usuario",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Materia",
+              "displayName": "Materia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tarea",
+              "displayName": "Tarea",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tipo",
+              "displayName": "Tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Hora",
+              "displayName": "Hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Prioridad",
+              "displayName": "Prioridad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "FechaRegistro",
+              "displayName": "FechaRegistro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "RecordatorioEnviado",
+              "displayName": "RecordatorioEnviado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "24f4c9ab-d11b-440e-a6c3-c1b633cb079a",
+      "name": "Marcar avisadas",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7vlGL7B30Kpa4i1t",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Nodo Code (modo: \"Run Once for All Items\")\n * Ubicacion: workflow \"wf-recordatorios\", entre \"Enviar recordatorio\" y\n *            \"Marcar avisadas\".\n *\n * \"Filtrar vencimientos\" emite un item por usuario, con un array \"ids\" que\n * puede contener varias tareas. \"Marcar avisadas\" necesita lo contrario: un\n * item por tarea, porque cada Update Row toca una sola fila.\n *\n * Los datos se recuperan de \"Filtrar vencimientos\" y no de la entrada directa\n * porque el nodo anterior es el de Telegram, cuya salida es la respuesta de la\n * API: para entonces el array \"ids\" ya no esta en el flujo.\n */\n\nconst avisos = $('Filtrar vencimientos').all().map(i => i.json);\n\nreturn avisos.flatMap(aviso =>\n  (aviso.ids ?? []).map(id => ({ json: { ID: String(id) } }))\n);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "2895a948-6897-4f8c-b89b-4603faa2de12",
+      "name": "Expandir ids"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Leer todas las tareas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer todas las tareas": {
+      "main": [
+        [
+          {
+            "node": "Filtrar vencimientos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar vencimientos": {
+      "main": [
+        [
+          {
+            "node": "Enviar recordatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar recordatorio": {
+      "main": [
+        [
+          {
+            "node": "Expandir ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expandir ids": {
+      "main": [
+        [
+          {
+            "node": "Marcar avisadas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "54d47fd90a65e58bd6027bbf1c0ff7331e9ebc54105efcf0919ae77bc62104a0"
+  }
+}
