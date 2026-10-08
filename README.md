@@ -2,6 +2,10 @@
 
 Panel académico para consultar tareas almacenadas en Google Sheets. La interfaz se sincroniza manualmente mediante n8n para evitar ejecuciones innecesarias.
 
+## Uso
+
+Presiona **Actualizar tareas** en la parte superior del panel para sincronizar los datos con Google Sheets. Puedes filtrar las tareas por texto, materia o estado.
+
 ## Desarrollo
 
 ```bash
